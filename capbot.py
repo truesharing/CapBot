@@ -5,17 +5,16 @@ import requests
 import sqlite3
 import time
 import threading
-from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from requests import HTTPError
 from typing import Tuple
-from urllib.parse import quote
 
 import discord
 from discord import app_commands
 from discord.ext import tasks
 
 from db import init_db, get_db
+from rsapi import *
 
 """
 Main scheduled job:
@@ -57,77 +56,7 @@ def timestamp_to_date(timestamp) -> str:
     dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
     return dt.strftime("%d-%b-%Y %H:%M")
 
-@dataclass
-class ClanMember:
-    rsn:str
-    rank:str
-    total_xp:int
-    kills:int
-
-def fetch_clan_members(clan_name:str) -> list[ClanMember]:
-    url = f"https://secure.runescape.com/m=clan-hiscores/members_lite.ws?clanName={clan_name}"
-    response = requests.get(url)
-    response.raise_for_status()
-    content = response.text
-
-    clan_members:list[ClanMember] = []
-    rows = content.split("\n")
-    for row in rows[1:]:
-        entry = row.split(",")
-        if len(entry) < 4:
-            continue
-
-        clan_members.append(ClanMember(
-            rsn=entry[0].replace("\xa0", " ").strip(),
-            rank=entry[1].strip(),
-            total_xp=int(entry[2]),
-            kills=int(entry[3])
-        ))
-    return clan_members
-
-@dataclass
-class Activity:
-    date:str
-    details:str
-    text:str
-
-def fetch_user_activites(rsn:str, num_activities:int=20) -> list[Activity]:
-    log = logging.getLogger(LOG_NAME)
-
-    encoded_rsn = quote(rsn)
-    url = f"https://apps.runescape.com/runemetrics/profile/profile?user={encoded_rsn}&activities={num_activities}"
-    response = requests.get(url)
-    response.raise_for_status()
-    jdata = response.json()
-    if "error" in jdata:
-        error_message = jdata['error']
-        if error_message == "PROFILE_PRIVATE":
-            log.warning(f"Error fetching alog for {rsn}: User's ALog is private.")
-        else:
-            log.error(f"Error fetching alog for {rsn}: {jdata['error']}")
-        return []
-    
-    activities = jdata.get("activities")
-    if activities is None:
-        log.warning(f"No activies found for user {rsn}. Response: {response.text}")
-        return []
-    
-    activity_list:list[Activity] = []
-    for activity in activities:
-        activity_list.append(Activity(
-            date=activity["date"],
-            details=activity["details"],
-            text=activity["text"]
-        ))
-    return activity_list
-
-def get_cap_events(activities:list[Activity]) -> list[Activity]:
-    cap_events = []
-    for activity in activities:
-        if activity.text == "Capped at my Clan Citadel.":
-            cap_events.append(activity)
-    return cap_events
-
+# TODO: cache data and prefer fetching data for users with recent activity.
 def get_clan_cap_events(clan_name:str, cancel_event:threading.Event, max_events:int=-1):
     log = logging.getLogger("CapBot")
     try:
@@ -137,7 +66,6 @@ def get_clan_cap_events(clan_name:str, cancel_event:threading.Event, max_events:
         log.exception(f"Failed to fetch clan members for {clan_name}: {ex}")
         return {}
 
-    #start_time = time.time()
     request_delay = 10
     num_success = 0
     num_failures = 0
@@ -148,13 +76,7 @@ def get_clan_cap_events(clan_name:str, cancel_event:threading.Event, max_events:
             return user_cap_events
         
         member = clan_members[index]
-        #elapsed_time = time.time() - start_time
-        total_requests = num_failures + num_success
         try:
-            # if total_requests > 0 and total_requests % 15 == 0:
-            #     # Rate limiting seems to kick in every 15 requests, so wait long
-            #     time.sleep(15)
-            # else:
             time.sleep(3) # stay within 20 requests/minute
 
             log.debug(f"Fetching alog for {member.rsn}")
@@ -169,6 +91,10 @@ def get_clan_cap_events(clan_name:str, cancel_event:threading.Event, max_events:
                 break
             index += 1
             request_delay = 10 # Reset as we had a success
+
+        except PrivateProfileException:
+            log.warning(f"Failed to fetch activities for {member.rsn}: runemetrics profile is private")
+            index += 1
 
         except HTTPError as http_error:
             if http_error.response.status_code == 429: # Too many requests
@@ -263,12 +189,8 @@ class DiscordClient(discord.Client):
         self.logger.debug("Starting fetch_cap_event_task thread")
         self.task_thread = threading.Thread(target=fetch_cap_event_task, args=(self.task_cancel_event,))
         self.task_thread.start()
+    
 
-    @update_database_task.before_loop
-    async def before_update_database_task(self):
-        self.logger.debug("Waiting until ready to start update_database_task")
-        await self.wait_until_ready()
-        self.logger.debug("Ready")
 
 intents = discord.Intents.default()
 discord_client = DiscordClient(intents)

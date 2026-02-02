@@ -3,18 +3,27 @@ import logging
 
 def init_db():
     con = sqlite3.connect("capdata.db")
-    cur = con.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS cap_events(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            rsn TEXT NOT NULL,
-            cap_timestamp INTEGER NOT NULL,
-            source TEXT,
-            manual_user TEXT,
-            
-            UNIQUE(rsn, cap_timestamp)
-        )
-    """)
+    with con:
+        cur = con.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS cap_events(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                rsn TEXT NOT NULL,
+                cap_timestamp INTEGER NOT NULL,
+                source TEXT,
+                manual_user TEXT,
+                
+                UNIQUE(rsn, cap_timestamp)
+            )
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS last_user_activity(
+                rsn TEXT PRIMARY KEY,
+                last_activity_timestamp INTEGER NOT NULL,
+                last_query_timestamp INTEGER NOT NULL
+            )
+        """)
     con.close()
 
 def get_db():
