@@ -17,6 +17,9 @@ def init_db():
             )
         """)
 
+        # Index for primary query we do in /caplist
+        cur.execute("CREATE INDEX idx_cap_query ON cap_events(rsn,cap_timestamp)")
+
         # TODO: support adding missing columns.
         cur.execute("""
             CREATE TABLE IF NOT EXISTS user_activity(
@@ -26,6 +29,9 @@ def init_db():
                 private TINYINT DEFAULT 0
             )
         """)
+
+        # NOTE: likely won't need an index on user_activity as the table size is fixed to the number of clan members
+        # which cannot be more than a few hundred.
     con.close()
 
 def get_db():
