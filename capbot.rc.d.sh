@@ -39,10 +39,10 @@ capbot_prestart()
     chown ${capbot_user}:${capbot_group} ${capbot_logfile}
 
     # Always update code before starting
-    su -m "${capbot_user}" -c "
-        cd '${capbot_workdir}' &&
-        /usr/local/bin/git pull
-    " >> "${capbot_logfile}" 2>&1 || echo 'WARNING: git pull failed' >> "${capbot_logfile}"
+    echo "prestart: workdir=${capbot_workdir}" >> "${capbot_logfile}"
+    su -m "${capbot_user}" -c "cd '${capbot_workdir}' && /bin/pwd && /usr/local/bin/git rev-parse --is-inside-work-tree && /usr/local/bin/git pull" \
+    >> "${capbot_logfile}" 2>&1 || echo "WARNING: git pull failed" >> "${capbot_logfile}"
+
 }
 
 capbot_stop()
