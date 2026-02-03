@@ -19,7 +19,7 @@ load_rc_config $name
 : ${capbot_env_file="/home/jailuser/CapBot/env_vars"}
 : ${capbot_command:="/usr/local/bin/python3.13"}
 : ${capbot_script:="/home/jailuser/CapBot/capbot/capbot.py"}
-: ${capbot_pidfile:="/var/run/capbot.pid"}
+: ${capbot_pidfile:="/tmp/capbot.pid"}
 : ${capbot_logfile:="/var/log/capbot.log"}
 
 command="/usr/sbin/daemon"
@@ -35,6 +35,12 @@ capbot_prestart()
     install -d -o ${capbot_user} -g ${capbot_group} /var/run
     touch ${capbot_logfile}
     chown ${capbot_user}:${capbot_group} ${capbot_logfile}
+
+    # Always update code before starting
+    su -m "${myapp_user}" -c "
+        cd '${myapp_workdir}' &&
+        /usr/local/bin/git pull
+    " >> "${myapp_logfile}" 2>&1 || echo 'WARNING: git pull failed' >> "${myapp_logfile}"
 }
 
 capbot_stop()
