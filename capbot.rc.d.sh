@@ -7,7 +7,7 @@
 . /etc/rc.subr
 
 name="capbot"
-rcvar=${name}_enable
+rcvar="${name}_enable"
 
 load_rc_config $name
 
@@ -23,11 +23,13 @@ load_rc_config $name
 : ${capbot_logfile:="/var/log/capbot.log"}
 
 command="/usr/sbin/daemon"
-command_args="-f -p ${capbot_pidfile} -u ${capbot_user} -o ${capbot_logfile} \
-    -c ${capbot_workdir} ${capbot_command} ${capbot_script}"
+command_args="-f -p ${capbot_pidfile} -u ${capbot_user} \
+    -o ${capbot_logfile} -m 3 \
+    -c ${capbot_workdir} \
+    ${capbot_command} ${capbot_script}"
 
 start_precmd="${name}_prestart"
-start_precmd="${name}_stop"
+stop_cmd="${name}_stop"
 
 capbot_prestart()
 {
@@ -37,10 +39,10 @@ capbot_prestart()
     chown ${capbot_user}:${capbot_group} ${capbot_logfile}
 
     # Always update code before starting
-    su -m "${myapp_user}" -c "
-        cd '${myapp_workdir}' &&
+    su -m "${capbot_user}" -c "
+        cd '${capbot_workdir}' &&
         /usr/local/bin/git pull
-    " >> "${myapp_logfile}" 2>&1 || echo 'WARNING: git pull failed' >> "${myapp_logfile}"
+    " >> "${capbot_logfile}" 2>&1 || echo 'WARNING: git pull failed' >> "${capbot_logfile}"
 }
 
 capbot_stop()
