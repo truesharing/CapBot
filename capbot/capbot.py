@@ -9,10 +9,10 @@ import discord
 from discord import app_commands
 from discord.ext import tasks
 
+from log import init_log, LOG_NAME
 from db import init_db, get_db
 from rsapi import *
 
-LOG_NAME = "CapBot"
 CLAN_NAME = "Unknown"
 MAX_FAILURES = 5
 MAX_USER_QUERIES = 15
@@ -54,7 +54,7 @@ def get_user_activities(users:list[str], cancel_event:threading.Event, num_activ
         
         rsn = users[index]
         try:
-            time.sleep(1) # delay between each request to reduce 429 errors
+            time.sleep(0) # delay between each request to reduce 429 errors
 
             log.debug(f"Fetching alog for {rsn}")
             activities = fetch_user_activites(rsn, num_activities)
@@ -281,4 +281,5 @@ def run_bot():
     discord_client.run(token=token)
 
 if __name__ == "__main__":
+    init_log()
     run_bot()
