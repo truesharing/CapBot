@@ -9,20 +9,21 @@
 name="capbot"
 rcvar="${name}_enable"
 
-load_rc_config $name
-
 : ${capbot_enable:="YES"}
 : ${capbot_user:="jailuser"}
 : ${capbot_group:="jailuser"}
-: ${capbot_workdir:="/home/jailuser/CapBot"}
+#: ${capbot_workdir:="/home/jailuser/CapBot"}
 : ${capbot_env_file:="/home/jailuser/CapBot/env_vars"}
 : ${capbot_command:="/usr/local/bin/python3.13"}
 : ${capbot_script:="/home/jailuser/CapBot/capbot/capbot.py"}
 : ${capbot_pidfile:="/tmp/capbot.pid"}
 : ${capbot_logfile:="/var/log/capbot.log"}
 
+# Force wd to avoid duplicate issue
+capbot_workdir="/home/jailuser/CapBot"
+
 command="/usr/sbin/daemon"
-command_args="-f -p ${capbot_pidfile} -u ${capbot_user} \
+command_args="-f -u ${capbot_user} \
     -o ${capbot_logfile} -m 3 \
     -c ${capbot_workdir} \
     -p ${capbot_pidfile} \
@@ -42,7 +43,7 @@ capbot_prestart()
     echo "prestart: workdir=${capbot_workdir}" >> "${capbot_logfile}"
     su -m "${capbot_user}" -c "cd '${capbot_workdir}' && /bin/pwd && /usr/local/bin/git rev-parse --is-inside-work-tree && /usr/local/bin/git pull" \
     >> "${capbot_logfile}" 2>&1 || echo "WARNING: git pull failed" >> "${capbot_logfile}"
-
+    return 0
 }
 
 capbot_stop()
@@ -52,4 +53,5 @@ capbot_stop()
     fi
 }
 
+load_rc_config $name
 run_rc_command "$1"
