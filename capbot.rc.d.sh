@@ -16,14 +16,14 @@ rcvar="${name}_enable"
 : ${capbot_env_file:="/home/jailuser/CapBot/env_vars"}
 : ${capbot_command:="/usr/local/bin/python3.13"}
 : ${capbot_script:="/home/jailuser/CapBot/capbot/capbot.py"}
-: ${capbot_pidfile:="/tmp/capbot.pid"}
-: ${capbot_logfile:="/var/log/capbot.log"}
+: ${capbot_pidfile:="/var/run/capbot/capbot.pid"}
+: ${capbot_logfile:="/var/log/capbot/capbot.log"}
 
 # Force wd to avoid duplicate issue
 capbot_workdir="/home/jailuser/CapBot"
 
 command="/usr/sbin/daemon"
-command_args="-f -u ${capbot_user} \
+command_args="-u ${capbot_user} \
     -o ${capbot_logfile} -m 3 \
     -c ${capbot_workdir} \
     -p ${capbot_pidfile} \
@@ -35,7 +35,8 @@ stop_cmd="${name}_stop"
 capbot_prestart()
 {
     install -d -o ${capbot_user} -g ${capbot_group} ${capbot_workdir}
-    install -d -o ${capbot_user} -g ${capbot_group} /var/run
+    install -d -o ${capbot_user} -g ${capbot_group} /var/run/capbot
+    install -d -o ${capbot_user} -g ${capbot_group} /var/log/capbot
     touch ${capbot_logfile}
     chown ${capbot_user}:${capbot_group} ${capbot_logfile}
 
