@@ -13,10 +13,11 @@ def start_linux(log):
     context = daemon.DaemonContext(
         working_directory=os.getenv("CAPBOT_CWD"),
         pidfile=daemon.pidfile.PIDLockFile(os.getenv("CAPBOT_PIDFILE")),
-        files_preserve=["capbot.log"] # The daemon context closes an open files, so keep the log open.
     )
 
     with context:
+        # The daemon context closes any open file descriptors. So re-open the long without truncating.
+        log = init_log(mode="a")
         log.info("Starting bot daemon")
         run_bot()
 

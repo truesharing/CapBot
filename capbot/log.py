@@ -2,7 +2,7 @@ import logging
 
 LOG_NAME = "CapBot"
 
-def init_log():
+def init_log(mode="w"):
     log = logging.getLogger(LOG_NAME)
     log.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
@@ -12,7 +12,7 @@ def init_log():
     console_handler.setLevel(logging.DEBUG)
     log.addHandler(console_handler)
 
-    file_handler = logging.FileHandler("capbot.log", encoding="utf-8", mode="w")
+    file_handler = logging.FileHandler("capbot.log", encoding="utf-8", mode=mode)
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging.DEBUG)
     log.addHandler(file_handler)
