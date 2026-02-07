@@ -35,6 +35,9 @@ def get_offset_from_now_timestamp(delta:timedelta) -> int:
     start_date = now - delta
     return int(start_date.timestamp()) # Truncate as we only care about seconds
 
+def format_timestamp_for_discord(timestamp) -> str:
+    return f"<t:{timestamp}:f>"
+
 def get_user_activities(users:list[str], cancel_event:threading.Event, num_activities:int=20) -> dict[str, ActivityLog]:
     """
     Fetches the adventure's log for each user in the list.
@@ -198,8 +201,12 @@ class DiscordClient(discord.Client):
 
     async def on_ready(self):
         self.logger.debug(f'Logged on as {self.user}!')
-        # Kick off the update task. We could do this earlier but this way we don't have to wait on it if login fails.
-        self.update_database_task.start()
+        if not os.getenv("CAPBOT_DISABLE_SCAN_TASK", False):
+            # Kick off the update task. We could do this earlier but this way we don't have to wait on it if login fails.
+            logging.debug("Starting update_database_task.")
+            self.update_database_task.start()
+        else:
+            logging.info("Not starting update_database_task due to 'CAPBOT_DISABLE_SCAN_TASK' being set.")
 
     async def close(self):
         # Kill the update thread before shutting down.
@@ -270,6 +277,37 @@ async def list_private_alogs(interaction:discord.Interaction):
         if len(rsns) == 0:
             message += "None"
         await interaction.response.send_message(message, ephemeral=True)
+
+@discord_client.tree.command(name="user-status", description="Print cap/scan information about a user.")
+async def scan_status(interaction:discord.Interaction, rsn:str):
+    with get_db() as db:
+        if rsn is not None:
+            cur = db.execute("""
+                SELECT
+                    ua.last_activity_timestamp,
+                    ua.last_query_timestamp,
+                    ua.private,
+                    (
+                        SELECT ce.cap_timestamp
+                        FROM cap_events ce
+                        WHERE ce.rsn = ua.rsn COLLATE NOCASE
+                        ORDER BY ce.cap_timestamp DESC
+                        LIMIT 1
+                    ) AS cap_timestamp
+                FROM user_activity ua
+                WHERE ua.rsn = ? COLLATE NOCASE;
+                """, (rsn,))
+            result = cur.fetchone()
+            if result:
+                message = f"### User Status For {rsn}:\n"
+                message += f"Last Activity Time: {format_timestamp_for_discord(int(result[0]))}\n"
+                message += f"Last Scan Time: {format_timestamp_for_discord(int(result[1]))}\n"
+                message += f"Last Cap Time: {format_timestamp_for_discord(int(result[3])) if result[3] else None}\n"
+                message += f"Private ALog?: {'Yes' if result[2] == 1 else '`No`'}\n"
+                await interaction.response.send_message(message, ephemeral=True)
+            else:
+                await interaction.response.send_message(f"No matching rsn found.", ephemeral=True)
+
 
 def run_bot():
     global CLAN_NAME
