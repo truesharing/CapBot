@@ -125,7 +125,7 @@ def update_task(cancel_event:threading.Event):
 
         # Get all users that have been active in the last week, or we haven't checked recently.
         # Only query a few at a time as it's very slow due to Jagex rate limits.
-        cur = dbcon.execute(f"SELECT rsn FROM user_activity ORDER BY last_query_timestamp ASC LIMIT {users_to_query}")
+        cur = dbcon.execute(f"SELECT rsn FROM user_activity ORDER BY last_query_timestamp ASC LIMIT {MAX_USER_QUERIES}")
         users_to_query = [row[0] for row in cur.fetchall()]
 
     if len(users_to_query) == 0:
