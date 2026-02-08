@@ -340,7 +340,7 @@ async def user_status(interaction:discord.Interaction, rsn:str=None):
                 table = create_table(["Rsn", "Last Activity Date", "Last Scan Date", "Last Cap Date", "Private ALog"], formatted_rows)
                 f.write(table)
             try:
-                await interaction.response.send_message("Full user status summary:", file=discord.File(temp_filename))
+                await interaction.response.send_message("Full user status summary:", file=discord.File(temp_filename), ephemeral=True)
             finally:
                 os.remove(temp_filename)
 
