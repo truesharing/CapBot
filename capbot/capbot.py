@@ -281,7 +281,7 @@ async def captotal(interaction:discord.Interaction, days:int=0):
         column_headers = ["RSN", "Total Citadel Caps"]
         rows = [[rsn, cap_count] for rsn, cap_count in rows]
         message = f"### Total Citadel Caps per user"
-        message += f" in the last {days} days"
+        message += f" in the last {days} days" if days > 0 else ""
 
         with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
             temp_filename = f.name
